@@ -17,7 +17,7 @@ class PicassoEngine(metaclass=abc.ABCMeta):
         pygame.init()
         self.screen = pygame.display.set_mode(self.window_size, pygame.DOUBLEBUF)
         pygame.display.set_caption(self.name)
-        self.info = pygame.display.Info()
+
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
