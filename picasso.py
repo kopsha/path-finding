@@ -1,3 +1,4 @@
+"""An opinionated drawing engine built on pygame"""
 import pygame
 import abc
 
@@ -5,9 +6,8 @@ import abc
 class PicassoEngine(metaclass=abc.ABCMeta):
 
     def __init__(self, window_size, name=None):
-        """no exceptions, no surprises"""
         self.window_size = window_size
-        self.name = name or "__name__"
+        self.name = name or self.__class__.__name__
         self.screen = None
 
     def __enter__(self):
@@ -31,7 +31,7 @@ class PicassoEngine(metaclass=abc.ABCMeta):
         keep_playing = True
         while keep_playing:
 
-            self.render_frame()
+            self.on_paint()
             pygame.display.flip()
 
             for event in pygame.event.get():
@@ -42,6 +42,8 @@ class PicassoEngine(metaclass=abc.ABCMeta):
                 elif event.type == pygame.KEYDOWN:
                     self.on_key(event)
 
+            pygame.time.wait(10)
+
 
     @abc.abstractmethod
     def on_click(self, event): pass
@@ -50,4 +52,4 @@ class PicassoEngine(metaclass=abc.ABCMeta):
     def on_key(self, event): pass
 
     @abc.abstractmethod
-    def render_frame(screen): pass
+    def on_paint(self): pass
