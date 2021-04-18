@@ -42,8 +42,7 @@ PALETTE = {
     21: pygame.Color(0, 251, 92),
 }
 
-def load_csv_matrix(filename):
-    print(f"loading {filename}")
+def load_csv(filename):
     data = []
     with open(filename, newline="") as csvfile:
         content = csv.reader(csvfile, delimiter=",")
@@ -56,10 +55,10 @@ def load_csv_matrix(filename):
     cols = len(data[0])
     assert cols > 1
 
-    m = numpy.matrix(data, dtype=int)
-    print(f" >> shape", m.shape)
+    matrix = numpy.matrix(data, dtype=int)
+    print(f" >> loaded {filename}", matrix.shape)
 
-    return m
+    return matrix
 
 
 class DaliPathPainter(PicassoEngine):
@@ -69,43 +68,43 @@ class DaliPathPainter(PicassoEngine):
         self.frame_counter = 0
         self.maze = None
         self.data_files = None
+        self.route_rq = (None, None)
 
     def on_init(self):
         self.data_files = {i + 49: name for i, name in enumerate(sorted(glob.glob("*.csv")))}
         if self.data_files:
-            print(" >> available data maps")
-            for k, name in self.data_files.items():
-                print(f"'{chr(k)}' -> {name}")
-            self.maze = load_csv_matrix(self.data_files[49])
+            self.maze = load_csv(self.data_files[49])
             self.paint_maze()
 
     def on_paint(self):
         self.frame_counter += 1
         if self.frame_counter % 1000 == 0:
-            print(f" >> {self.frame_counter}k paintings")
+            print(f" >> rendered {self.frame_counter // 1000}k paintings")
 
     def on_click(self, event):
-        print("clicked", event.pos)
         x, y = event.pos
-
-
-
         col = (x - LEFT_OFFSET - PADDING // 2) // PADDED_CELL
         row = (y - TOP_OFFSET - PADDING // 2) // PADDED_CELL
-
         rows, cols = self.maze.shape
-        print((x, y), " -> ", (row, col))
 
         if 0 <= row < rows and 0 <= col < cols:
-            print(self.maze[row, col])
+            if event.button == 1:
+                self.route_rq = ((row, col), self.route_rq[1])
+            elif event.button == 3:
+                self.route_rq = (self.route_rq[0], (row, col))
 
     def on_key(self, event):
         if event.key == pygame.K_ESCAPE:
             bye = pygame.event.Event(pygame.QUIT)
             pygame.event.post(bye)
         elif event.key in self.data_files:
-            self.maze = load_csv_matrix(self.data_files[event.key])
+            self.maze = load_csv(self.data_files[event.key])
             self.paint_maze()
+        elif event.key == pygame.K_F1:
+            if self.data_files:
+                print(" F1 >> all available data sets")
+                for k, name in self.data_files.items():
+                    print(f"\t'{chr(k)}' -> {name}")
 
     def paint_maze(self):
         if self.maze is None:
