@@ -174,7 +174,7 @@ def distance(left, right):
     return abs(right_row - left_row) + abs(right_col - left_col)
 
 
-def cross_neighbours(matrix, position, goal):
+def cross_neighbours(matrix, position, goal, visited):
     rows, cols = matrix.shape
     r, c = position
     goal_value = matrix[goal]
@@ -187,49 +187,85 @@ def cross_neighbours(matrix, position, goal):
             (r + 1, c),
             (r, c + 1),
         ]
-        if (0 <= i < rows) and (0 <= j < cols) and matrix[i, j] in {0, goal_value}
+        if (0 <= i < rows) and (0 <= j < cols) and (i, j) not in visited and matrix[i, j] in {0, goal_value}
     ]
 
     # print("neighbours of", node, "are", neighbours)
     return neighbours
 
+def boxed_values(maze, position):
+    rows, cols = maze.shape
+    r, c = position
+    nb = [
+        maze.item((i, j))
+        for i, j in [
+            # top row, left to right
+            (r - 1, c - 1), (r - 1, c), (r - 1, c + 1),
+            (r, c + 1),     # right node
+            # bottom row, right to left
+            (r + 1, c + 1), (r + 1, c), (r + 1, c - 1),
+            (r, c - 1),                             # left node
+        ]
+        if (0 <= i < rows) and (0 <= j < cols)
+    ]
+    return nb
 
-def reconstruct_path(came_from, position):
+def reconstruct_path(trail, position):
     path = deque([position])
-    while position in came_from:
-        position = came_from[position]
+    while position in trail:
+        position = trail[position]
         path.appendleft(position)
 
     return list(path)
 
 
-def find_a_star(maze, start, finish):
+def mask_unreachable(maze, allow_value):
+    masked = numpy.array(maze)
+    for pos, value in numpy.ndenumerate(maze):
+        if value == 0:
+            nbs = set(boxed_values(maze, pos))
+            other = nbs - {0, allow_value}
+            if other:
+                masked.itemset(pos, WALL_MARK)
+    return masked
+
+def find_a_star(original_maze, start, finish):
     """A* finds a path from start to finish."""
+    goal_value = original_maze.item(start) or original_maze.item(finish)
+    maze = mask_unreachable(original_maze, goal_value)
     queue = [(0, start)]
+    trail = {}
 
-    came_from = {}
+    # gScore[n] is the cost of the cheapest path from start to n
+    g_score = {start: 0}
 
-    # For node n, gScore[n] is the cost of the cheapest path from start to n
-    g_score = defaultdict(lambda: infinity)
-    g_score[start] = 0
-
-    # For node n, fScore[n] := gScore[n] + h(n). fScore[n] represents our pos best guess as to
+    # fScore[n] := gScore[n] + h(n). fScore[n] represents our pos best guess as to
     # how short a path from start to finish can be if it goes through n.
-    f_score = defaultdict(lambda: infinity)
-    f_score[start] = distance(start, finish)
+    f_score = {start: distance(start, finish)}
+    visited = set()
 
     while queue:
         _, pos = heappop(queue)
+        visited.add(pos)
 
         if pos == finish:
-            return reconstruct_path(came_from, pos)
+            return reconstruct_path(trail, pos)
 
-        for h_dist, neighbour in cross_neighbours(maze, pos, finish):
+        pos_g_score = g_score[pos]
+
+        for h_dist, neighbour in cross_neighbours(maze, pos, finish, visited):
             # tentative_gScore is the distance from start to the neighbour through pos
-            tentative_g_score = g_score[pos] + 1
-            if tentative_g_score < g_score[neighbour]:
+            came_from = trail.get(pos)
+            if came_from is None:
+                came_from = pos
+
+            d_from = pos[0] - came_from[0], pos[1] - came_from[1]
+            d_to = neighbour[0] - pos[0], neighbour[1] - pos[1]
+            tentative_g_score = pos_g_score + (1 if d_from == d_to else 2)
+
+            if tentative_g_score < g_score.get(neighbour, infinity):
                 # This path to neighbour is better than any previous one. Record it!
-                came_from[neighbour] = pos
+                trail[neighbour] = pos
                 g_score[neighbour] = tentative_g_score
                 f_score[neighbour] = tentative_g_score + h_dist
                 if neighbour not in queue:
