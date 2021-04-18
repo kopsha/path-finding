@@ -1,6 +1,7 @@
 """An opinionated drawing engine built on pygame"""
 import pygame
 import abc
+import time
 
 
 class PicassoEngine(metaclass=abc.ABCMeta):
@@ -30,10 +31,10 @@ class PicassoEngine(metaclass=abc.ABCMeta):
 
         keep_playing = True
         while keep_playing:
+            cycle_start = time.perf_counter_ns()
 
             self.on_paint()
             pygame.display.flip()
-
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     keep_playing = False
@@ -42,7 +43,10 @@ class PicassoEngine(metaclass=abc.ABCMeta):
                 elif event.type == pygame.KEYDOWN:
                     self.on_key(event)
 
-            pygame.time.wait(10)
+            cycle_end = time.perf_counter_ns()
+            duration = (cycle_end - cycle_start) // 1_000_000
+            if duration < 33:
+                pygame.time.wait(33 - duration)
 
 
     @abc.abstractmethod
