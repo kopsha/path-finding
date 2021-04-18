@@ -97,6 +97,9 @@ class DaliPathPainter(PicassoEngine):
                 print(" F1 >> all available data sets")
                 for k, name in self.data_files.items():
                     print(f"\t'{chr(k)}' -> {name}")
+        else:
+            print(event.key)
+
 
     def paint_maze(self):
         if self.maze is None:
