@@ -12,6 +12,7 @@ class PicassoEngine(metaclass=abc.ABCMeta):
         self.screen = None
 
     def __enter__(self):
+        print(" >> engine started")
         if not self.screen is None:
             raise RuntimeError("Video screen is already initialized.")
 
@@ -22,6 +23,7 @@ class PicassoEngine(metaclass=abc.ABCMeta):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        print(" >> engine stopped")
         pygame.display.quit()
         return exc_type is None
 
