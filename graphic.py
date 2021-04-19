@@ -1,13 +1,15 @@
 from picasso import PicassoEngine
+from pathfinding import find_a_star, propagate_wave
+from pathfinding import WALL_MARK, PATH_MARK
+from palletes import WAVES_PALLETE
 
 import pygame
 import numpy
 import csv
 import glob
+import heapq
 
-from heapq import heappop, heappush
-from collections import deque, defaultdict
-from math import inf as infinity
+from collections import Counter, defaultdict
 
 
 WINDOW_SIZE = 1024, 768
@@ -20,8 +22,6 @@ LEFT_OFFSET = 20 + PADDED_CELL*2
 BLACK = pygame.Color(0, 0, 0)
 GRAY = pygame.Color(96, 96, 96)
 WHITE = pygame.Color(255, 255, 255)
-WALL_MARK = -1
-PATH_MARK = -2
 
 PALETTE = {
     PATH_MARK: GRAY,
@@ -57,10 +57,11 @@ class DaliPathPainter(PicassoEngine):
         super().__init__(*args, **kwargs)
         self.frame_counter = 0
         self.maze = None
+        self.wave = None
         self.data_files = None
         self.route_rq = (None, None)
 
-    def on_init(self):
+    def post_init(self):
         self.data_files = {i + 49: name for i, name in enumerate(sorted(glob.glob("*.csv")))}
         if self.data_files:
             self.maze = load_csv(self.data_files[49])
@@ -80,8 +81,12 @@ class DaliPathPainter(PicassoEngine):
         if 0 <= row < rows and 0 <= col < cols:
             if event.button == 1:
                 self.route_rq = ((row, col), self.route_rq[1])
+                # self.paint_wave_route((row, col))
+                # self.paint_wave()
             elif event.button == 3:
                 self.route_rq = (self.route_rq[0], (row, col))
+                self.wave = propagate_wave(self.maze, (row, col))
+
             self.find_a_route()
 
     def on_key(self, event):
@@ -97,8 +102,10 @@ class DaliPathPainter(PicassoEngine):
                 print(" F1 >> all available data sets")
                 for k, name in self.data_files.items():
                     print(f"\t'{chr(k)}' -> {name}")
-        else:
-            print(event.key)
+        elif event.key == pygame.K_F2:
+            self.paint_wave()
+        elif event.key == pygame.K_KP_PLUS:
+            self.step_grow()
 
 
     def paint_maze(self):
@@ -106,10 +113,7 @@ class DaliPathPainter(PicassoEngine):
             print("skipping, no maze found.")
             return
 
-        white = pygame.Color(255, 255, 255)
-        black = pygame.Color(0, 0, 0)
-        self.screen.fill(black)
-
+        self.screen.fill(BLACK)
         rows, cols = self.maze.shape
 
         bounding_box = pygame.Rect(
@@ -120,8 +124,8 @@ class DaliPathPainter(PicassoEngine):
             20 + PADDED_CELL, 20 + PADDED_CELL,
             PADDED_CELL * (cols + 2), PADDED_CELL * (rows + 2)
         )
-        pygame.draw.rect(self.screen, white, bounding_box)
-        pygame.draw.rect(self.screen, black, maze_box)
+        pygame.draw.rect(self.screen, WHITE, bounding_box)
+        pygame.draw.rect(self.screen, BLACK, maze_box)
 
         for pos, value in numpy.ndenumerate(self.maze):
             if value:
@@ -151,6 +155,88 @@ class DaliPathPainter(PicassoEngine):
                 self.maze.itemset(node, PATH_MARK)
         self.paint_maze()
 
+    def paint_wave(self):
+        if self.wave is None:
+            print("wave pulse is missing.")
+            return
+
+        self.screen.fill(BLACK)
+        rows, cols = self.maze.shape
+
+        bounding_box = pygame.Rect(
+            20, 20,
+            PADDED_CELL * (cols + 4), PADDED_CELL * (rows + 4)
+        )
+        maze_box = pygame.Rect(
+            20 + PADDED_CELL, 20 + PADDED_CELL,
+            PADDED_CELL * (cols + 2), PADDED_CELL * (rows + 2)
+        )
+        pygame.draw.rect(self.screen, WHITE, bounding_box)
+        pygame.draw.rect(self.screen, BLACK, maze_box)
+
+        for pos, value in numpy.ndenumerate(self.wave):
+            if value > 0:
+                col = WAVES_PALLETE[value % 64]
+                r, c = pos
+                y, x = TOP_OFFSET + r * PADDED_CELL, LEFT_OFFSET + c * PADDED_CELL
+                cell_rect = pygame.Rect(x + PADDING//2, y + PADDING//2, CELL_SIZE, CELL_SIZE)
+                pygame.draw.rect(self.screen, col, cell_rect)
+
+    def paint_wave_route(self, start):
+        if self.wave is None:
+            print("wave pulse is missing.")
+            return
+
+        if self.wave.item(start) < 0:
+            print("cannot start from wall", start)
+            return
+
+        print("showing route from", start)
+        # self.screen.fill(BLACK)
+        rows, cols = self.maze.shape
+
+        # bounding_box = pygame.Rect(
+        #     20, 20,
+        #     PADDED_CELL * (cols + 4), PADDED_CELL * (rows + 4)
+        # )
+        # maze_box = pygame.Rect(
+        #     20 + PADDED_CELL, 20 + PADDED_CELL,
+        #     PADDED_CELL * (cols + 2), PADDED_CELL * (rows + 2)
+        # )
+        # pygame.draw.rect(self.screen, WHITE, bounding_box)
+        # pygame.draw.rect(self.screen, BLACK, maze_box)
+
+        pos = start
+        finish = self.route_rq[1]
+
+        cnt = 0
+        while pos != finish and cnt < 30:
+            cnt += 1
+            # paint current cell
+            col = pygame.Color(0, 255, 0)
+            r, c = pos
+            y, x = TOP_OFFSET + r * PADDED_CELL, LEFT_OFFSET + c * PADDED_CELL
+            cell_rect = pygame.Rect(x + PADDING//2, y + PADDING//2, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(self.screen, col, cell_rect)
+
+            # pick the next cell
+            neighbours = [
+                (self.wave.item((ri, ci)), (ri, ci))
+                for ri, ci in [(r, c+1), (r-1, c), (r, c-1), (r+1, c)]
+                if (0 <= ri < rows) and (0 <= ci < cols) and self.wave.item((ri, ci)) >= 0
+            ]
+            heapq.heapify(neighbours)
+            print(pos, neighbours)
+            _, pos = heapq.heappop(neighbours)
+
+        # paint last cell
+        col = pygame.Color(0, 255, 0)
+        r, c = pos
+        y, x = TOP_OFFSET + r * PADDED_CELL, LEFT_OFFSET + c * PADDED_CELL
+        cell_rect = pygame.Rect(x + PADDING//2, y + PADDING//2, CELL_SIZE, CELL_SIZE)
+        pygame.draw.rect(self.screen, col, cell_rect)
+
+
 def load_csv(filename):
     data = []
     with open(filename, newline="") as csvfile:
@@ -170,116 +256,9 @@ def load_csv(filename):
     return matrix
 
 
-def distance(left, right):
-    """manhattan distance"""
-    left_row, left_col = left
-    right_row, right_col = right
-    return abs(right_row - left_row) + abs(right_col - left_col)
-
-
-def cross_neighbours(matrix, position, goal, visited):
-    rows, cols = matrix.shape
-    r, c = position
-    goal_value = matrix[goal]
-
-    neighbours = [
-        (distance(left=(i, j), right=goal), (i, j))
-        for i, j in [
-            (r - 1, c),
-            (r, c - 1),
-            (r + 1, c),
-            (r, c + 1),
-        ]
-        if (0 <= i < rows) and (0 <= j < cols) and (i, j) not in visited and matrix[i, j] in {0, goal_value}
-    ]
-
-    # print("neighbours of", node, "are", neighbours)
-    return neighbours
-
-def boxed_values(maze, position):
-    rows, cols = maze.shape
-    r, c = position
-    nb = [
-        maze.item((i, j))
-        for i, j in [
-            # top row, left to right
-            (r - 1, c - 1), (r - 1, c), (r - 1, c + 1),
-            (r, c + 1),     # right node
-            # bottom row, right to left
-            (r + 1, c + 1), (r + 1, c), (r + 1, c - 1),
-            (r, c - 1),                             # left node
-        ]
-        if (0 <= i < rows) and (0 <= j < cols)
-    ]
-    return nb
-
-def reconstruct_path(trail, position):
-    path = deque([position])
-    while position in trail:
-        position = trail[position]
-        path.appendleft(position)
-
-    return list(path)
-
-
-def mask_unreachable(maze, allow_value):
-    masked = numpy.array(maze)
-    for pos, value in numpy.ndenumerate(maze):
-        if value == 0:
-            nbs = set(boxed_values(maze, pos))
-            other = nbs - {0, allow_value}
-            if other:
-                masked.itemset(pos, WALL_MARK)
-    return masked
-
-def find_a_star(original_maze, start, finish):
-    """A* finds a path from start to finish."""
-    goal_value = original_maze.item(start) or original_maze.item(finish)
-    maze = mask_unreachable(original_maze, goal_value)
-    queue = [(0, start)]
-    trail = {}
-
-    # gScore[n] is the cost of the cheapest path from start to n
-    g_score = {start: 0}
-
-    # fScore[n] := gScore[n] + h(n). fScore[n] represents our pos best guess as to
-    # how short a path from start to finish can be if it goes through n.
-    f_score = {start: distance(start, finish)}
-    visited = set()
-
-    while queue:
-        _, pos = heappop(queue)
-        visited.add(pos)
-
-        if pos == finish:
-            return reconstruct_path(trail, pos)
-
-        pos_g_score = g_score[pos]
-
-        for h_dist, neighbour in cross_neighbours(maze, pos, finish, visited):
-            # tentative_gScore is the distance from start to the neighbour through pos
-            came_from = trail.get(pos)
-            if came_from is None:
-                came_from = pos
-
-            d_from = pos[0] - came_from[0], pos[1] - came_from[1]
-            d_to = neighbour[0] - pos[0], neighbour[1] - pos[1]
-            tentative_g_score = pos_g_score + (1 if d_from == d_to else 2)
-
-            if tentative_g_score < g_score.get(neighbour, infinity):
-                # This path to neighbour is better than any previous one. Record it!
-                trail[neighbour] = pos
-                g_score[neighbour] = tentative_g_score
-                f_score[neighbour] = tentative_g_score + h_dist
-                if neighbour not in queue:
-                    heappush(queue, (f_score[neighbour], neighbour))
-
-    return []
-
-
 def main():
     with DaliPathPainter(window_size=WINDOW_SIZE) as engine:
-        engine.on_init()
+        engine.post_init()
         engine.run()
 
 
