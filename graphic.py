@@ -1,5 +1,5 @@
 from picasso import PicassoEngine
-from pathfinding import find_a_star, propagate_wave, is_inside
+from pathfinding import find_a_star, propagate_wave, is_inside, Position
 from pathfinding import WALL_MARK, PATH_MARK
 from palettes import WAVES_PALETTE, PINOUT_PALETTE, BLACK, GRAY, WHITE
 
@@ -45,16 +45,17 @@ class DaliPathPainter(PicassoEngine):
         x, y = event.pos
         col = (x - LEFT_OFFSET - PADDING // 2) // PADDED_CELL
         row = (y - TOP_OFFSET - PADDING // 2) // PADDED_CELL
+        pos = Position(row, col)
 
-        if not is_inside(self.maze, (row, col)):
+        if not is_inside(pos, self.maze):
             return
 
         if event.button == 1:
-            self.route_rq = ((row, col), self.route_rq[1])
+            self.route_rq = (pos, self.route_rq[1])
             self.find_a_route()
         elif event.button == 3:
-            self.route_rq = (self.route_rq[0], (row, col))
-            self.wave = propagate_wave(self.maze, (row, col))
+            self.route_rq = (self.route_rq[0], pos)
+            self.wave = propagate_wave(self.maze, pos)
 
     def on_key(self, event):
         if event.key == pygame.K_ESCAPE:
@@ -165,12 +166,15 @@ class DaliPathPainter(PicassoEngine):
 
         print(f"Looking for a route {s_value or f_value} from {start} to {finish}.")
         path = find_a_star(self.maze, start, finish)
-        print("found:", path)
-        for node in path:
-            value = self.maze.item(node)
-            if value == 0:
-                self.maze.itemset(node, PATH_MARK)
-        self.paint_maze()
+
+        if path:
+            for node in path:
+                value = self.maze.item(node)
+                if value == 0:
+                    self.maze.itemset(node, PATH_MARK)
+            self.paint_maze()
+        else:
+            print("waning: no path found.")
 
 
 def load_csv(filename):

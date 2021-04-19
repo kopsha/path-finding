@@ -1,5 +1,5 @@
 from heapq import heappop, heappush
-from collections import deque, defaultdict, Counter
+from collections import deque, defaultdict, Counter, namedtuple
 
 import math
 import numpy
@@ -9,55 +9,60 @@ WALL_MARK = -1
 PATH_MARK = -2
 
 
-def is_inside(maze, position):
+Position = namedtuple("Position", ["row", "col"])
+
+
+def is_inside(position, maze):
     rows, cols = maze.shape
-    row, col = position
-    return 0 <= row < rows and 0 <= col < cols
+    return 0 <= position.row < rows and 0 <= position.col < cols
 
 
 def distance(left, right):
-    """manhattan distance"""
+    """uniform grid distance heuristic"""
     left_row, left_col = left
     right_row, right_col = right
+
     # return math.sqrt((right_row - left_row) ** 2 + (right_col - left_col) ** 2)
     dist = max(abs(right_row - left_row), abs(right_col - left_col))
     # dist = (abs(right_row - left_row) + abs(right_col - left_col))
+
     return 2 * dist
 
 
-def cross_coords_x(matrix, position, goal, visited):
-    rows, cols = matrix.shape
-    r, c = position
-    goal_value = matrix[goal]
+def cross_coords_x(maze, node, goal, visited):
+    goal_value = maze[goal]
 
     neighbours = [
-        (distance(left=(i, j), right=goal), (i, j))
-        for i, j in [
-            (r - 1, c),
-            (r, c - 1),
-            (r + 1, c),
-            (r, c + 1),
+        (distance(left=pos, right=goal), pos)
+        for pos in [
+            Position(node.row - 1, node.col),
+            Position(node.row, node.col - 1),
+            Position(node.row + 1, node.col),
+            Position(node.row, node.col + 1),
         ]
-        if (0 <= i < rows) and (0 <= j < cols) and (i, j) not in visited and matrix[i, j] in {0, goal_value}
+        if is_inside(pos, maze) and pos not in visited and maze.item(pos) in {0, goal_value}
     ]
 
     return neighbours
 
 
-def boxed_values(maze, position):
+def boxed_values(maze, node):
     rows, cols = maze.shape
-    r, c = position
     nb = [
-        maze.item((i, j))
-        for i, j in [
+        maze.item(pos)
+        for pos in [
             # top row, left to right
-            (r - 1, c - 1), (r - 1, c), (r - 1, c + 1),
-            (r, c + 1),     # right node
+            Position(node.row - 1, node.col - 1),
+            Position(node.row - 1, node.col),
+            Position(node.row - 1, node.col + 1),
+            Position(node.row, node.col + 1),  # right node
             # bottom row, right to left
-            (r + 1, c + 1), (r + 1, c), (r + 1, c - 1),
-            (r, c - 1),                             # left node
+            Position(node.row + 1, node.col + 1),
+            Position(node.row + 1, node.col),
+            Position(node.row + 1, node.col - 1),
+            Position(node.row, node.col - 1),  # left node
         ]
-        if (0 <= i < rows) and (0 <= j < cols)
+        if is_inside(pos, maze)
     ]
     return nb
 
@@ -73,7 +78,8 @@ def reconstruct_path(trail, position):
 
 def mask_unreachable(maze, allow_value):
     masked = numpy.array(maze)
-    for pos, value in numpy.ndenumerate(maze):
+    for node, value in numpy.ndenumerate(maze):
+        pos = Position(*node)
         if value == 0:
             nbs = set(boxed_values(maze, pos))
             other = nbs - {0, allow_value}
