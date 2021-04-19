@@ -5,7 +5,6 @@ import time
 
 
 class PicassoEngine(metaclass=abc.ABCMeta):
-
     def __init__(self, window_size, name=None):
         self.window_size = window_size
         self.name = name or self.__class__.__name__
@@ -52,12 +51,14 @@ class PicassoEngine(metaclass=abc.ABCMeta):
             if duration < 33:
                 pygame.time.wait(33 - duration)
 
+    @abc.abstractmethod
+    def on_click(self, event):
+        pass
 
     @abc.abstractmethod
-    def on_click(self, event): pass
+    def on_key(self, event):
+        pass
 
     @abc.abstractmethod
-    def on_key(self, event): pass
-
-    @abc.abstractmethod
-    def on_paint(self): pass
+    def on_paint(self):
+        pass

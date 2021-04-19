@@ -40,7 +40,9 @@ def cross_coords_x(maze, node, goal, visited):
             Position(node.row + 1, node.col),
             Position(node.row, node.col + 1),
         ]
-        if is_inside(pos, maze) and pos not in visited and maze.item(pos) in {0, goal_value}
+        if is_inside(pos, maze)
+        and pos not in visited
+        and maze.item(pos) in {0, goal_value}
     ]
 
     return neighbours
@@ -132,19 +134,16 @@ def find_a_star(original_maze, start, finish):
     return []
 
 
-def free_neighbours(matrix, position, visited):
-    rows, cols = matrix.shape
-    r, c = position
-
+def free_neighbours(maze, node, visited):
     neighbours = [
-        (i, j)
-        for i, j in [
-            (r - 1, c),
-            (r, c - 1),
-            (r + 1, c),
-            (r, c + 1),
+        pos
+        for pos in [
+            Position(r - 1, c),
+            Position(r, c - 1),
+            Position(r + 1, c),
+            Position(r, c + 1),
         ]
-        if (0 <= i < rows) and (0 <= j < cols) and (i, j) not in visited and matrix.item((i, j)) == 0
+        if is_inside(pos, maze) and pos not in visited and maze.item(pos) == 0
     ]
 
     return neighbours
@@ -152,7 +151,6 @@ def free_neighbours(matrix, position, visited):
 
 def propagate_wave(maze, position):
     wave = numpy.full_like(maze, WALL_MARK)
-    print("wave pulse from", position)
 
     queue = deque()
     queue.append((0, position))

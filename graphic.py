@@ -16,12 +16,11 @@ WINDOW_SIZE = 1024, 768
 CELL_SIZE = 13
 PADDING = 2
 PADDED_CELL = CELL_SIZE + PADDING
-TOP_OFFSET = 20 + PADDED_CELL*2
-LEFT_OFFSET = 20 + PADDED_CELL*2
+TOP_OFFSET = 20 + PADDED_CELL * 2
+LEFT_OFFSET = 20 + PADDED_CELL * 2
 
 
 class DaliPathPainter(PicassoEngine):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.frame_counter = 0
@@ -31,7 +30,9 @@ class DaliPathPainter(PicassoEngine):
         self.route_rq = (None, None)
 
     def post_init(self):
-        self.data_files = {i + 49: name for i, name in enumerate(sorted(glob.glob("*.csv")))}
+        self.data_files = {
+            i + 49: name for i, name in enumerate(sorted(glob.glob("*.csv")))
+        }
         if self.data_files:
             self.maze = load_csv(self.data_files[49])
             self.paint_maze()
@@ -52,7 +53,8 @@ class DaliPathPainter(PicassoEngine):
 
         if event.button == 1:
             self.route_rq = (pos, self.route_rq[1])
-            self.find_a_route()
+            # self.find_a_route()
+            self.paint_wave_route(pos)
         elif event.button == 3:
             self.route_rq = (self.route_rq[0], pos)
             self.wave = propagate_wave(self.maze, pos)
@@ -75,11 +77,12 @@ class DaliPathPainter(PicassoEngine):
         elif event.key == pygame.K_KP_PLUS:
             self.step_grow()
 
-
     def paint_cell(self, position, color):
         r, c = position
         y, x = TOP_OFFSET + r * PADDED_CELL, LEFT_OFFSET + c * PADDED_CELL
-        cell_rect = pygame.Rect(x + PADDING//2, y + PADDING//2, CELL_SIZE, CELL_SIZE)
+        cell_rect = pygame.Rect(
+            x + PADDING // 2, y + PADDING // 2, CELL_SIZE, CELL_SIZE
+        )
         pygame.draw.rect(self.screen, color, cell_rect)
 
     def paint_bounding_box(self):
@@ -87,16 +90,16 @@ class DaliPathPainter(PicassoEngine):
 
         rows, cols = self.maze.shape
         bounding_box = pygame.Rect(
-            20, 20,
-            PADDED_CELL * (cols + 4), PADDED_CELL * (rows + 4)
+            20, 20, PADDED_CELL * (cols + 4), PADDED_CELL * (rows + 4)
         )
         maze_box = pygame.Rect(
-            20 + PADDED_CELL, 20 + PADDED_CELL,
-            PADDED_CELL * (cols + 2), PADDED_CELL * (rows + 2)
+            20 + PADDED_CELL,
+            20 + PADDED_CELL,
+            PADDED_CELL * (cols + 2),
+            PADDED_CELL * (rows + 2),
         )
         pygame.draw.rect(self.screen, WHITE, bounding_box)
         pygame.draw.rect(self.screen, BLACK, maze_box)
-
 
     def paint_maze(self):
         if self.maze is None:
@@ -120,11 +123,11 @@ class DaliPathPainter(PicassoEngine):
 
     def paint_wave_route(self, start):
         if self.wave is None:
-            print("wave pulse is missing.")
+            print("warning: wave pulse is missing.")
             return
 
         if self.wave.item(start) < 0:
-            print("cannot start from wall", start)
+            print("warning: cannot start from wall", start)
             return
 
         print("showing route from", start)
@@ -133,21 +136,23 @@ class DaliPathPainter(PicassoEngine):
         pos = start
         finish = self.route_rq[1]
 
-        cnt = 0
-        while pos != finish and cnt < 30:
-            cnt += 1
+        while pos != finish:
             # paint current cell
             col = pygame.Color(0, 255, 0)
             self.paint_cell(pos, WAVES_PALETTE[PATH_MARK])
 
             # pick the next cell
             neighbours = [
-                (self.wave.item((ri, ci)), (ri, ci))
-                for ri, ci in [(r, c+1), (r-1, c), (r, c-1), (r+1, c)]
-                if (0 <= ri < rows) and (0 <= ci < cols) and self.wave.item((ri, ci)) >= 0
+                (self.wave.item(nb_pos), nb_pos)
+                for nb_pos in [
+                    Position(pos.row, pos.col + 1),
+                    Position(pos.row - 1, pos.col),
+                    Position(pos.row, pos.col - 1),
+                    Position(pos.row + 1, pos.col),
+                ]
+                if is_inside(nb_pos, self.wave) and self.wave.item(nb_pos) >= 0
             ]
             heapq.heapify(neighbours)
-            print(pos, neighbours)
             _, pos = heapq.heappop(neighbours)
 
         # paint last cell
