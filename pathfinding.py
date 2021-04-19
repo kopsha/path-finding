@@ -8,6 +8,13 @@ import numpy
 WALL_MARK = -1
 PATH_MARK = -2
 
+
+def is_inside(maze, position):
+    rows, cols = maze.shape
+    row, col = position
+    return 0 <= row < rows and 0 <= col < cols
+
+
 def distance(left, right):
     """manhattan distance"""
     left_row, left_col = left
@@ -16,7 +23,6 @@ def distance(left, right):
     dist = max(abs(right_row - left_row), abs(right_col - left_col))
     # dist = (abs(right_row - left_row) + abs(right_col - left_col))
     return 2 * dist
-
 
 
 def cross_coords_x(matrix, position, goal, visited):
@@ -35,8 +41,8 @@ def cross_coords_x(matrix, position, goal, visited):
         if (0 <= i < rows) and (0 <= j < cols) and (i, j) not in visited and matrix[i, j] in {0, goal_value}
     ]
 
-    # print("neighbours of", node, "are", neighbours)
     return neighbours
+
 
 def boxed_values(maze, position):
     rows, cols = maze.shape
@@ -54,6 +60,7 @@ def boxed_values(maze, position):
         if (0 <= i < rows) and (0 <= j < cols)
     ]
     return nb
+
 
 def reconstruct_path(trail, position):
     path = deque([position])
@@ -73,6 +80,7 @@ def mask_unreachable(maze, allow_value):
             if other:
                 masked.itemset(pos, WALL_MARK)
     return masked
+
 
 def find_a_star(original_maze, start, finish):
     """A* finds a path from start to finish."""

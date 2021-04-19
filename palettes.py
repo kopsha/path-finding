@@ -1,6 +1,42 @@
 import pygame
 
-WAVES_PALLETE = {
+from pathfinding import WALL_MARK, PATH_MARK
+
+
+BLACK = pygame.Color(0, 0, 0)
+GRAY = pygame.Color(96, 96, 96)
+WHITE = pygame.Color(255, 255, 255)
+
+
+PINOUT_PALETTE = {
+    PATH_MARK: GRAY,
+    WALL_MARK: WHITE,
+    0: BLACK,
+    1: pygame.Color(173, 0, 252),
+    2: pygame.Color(90, 0, 252),
+    3: pygame.Color(185, 254, 3),
+    4: pygame.Color(1, 250, 173),
+    5: pygame.Color(1, 249, 255),
+    6: pygame.Color(247, 255, 2),
+    7: pygame.Color(255, 0, 86),
+    8: pygame.Color(254, 170, 1),
+    9: pygame.Color(1, 166, 254),
+    10: pygame.Color(2, 83, 254),
+    11: pygame.Color(62, 253, 4),
+    12: pygame.Color(255, 0, 6),
+    13: pygame.Color(8, 0, 253),
+    14: pygame.Color(255, 0, 165),
+    15: pygame.Color(2, 0, 253),
+    16: pygame.Color(255, 0, 245),
+    17: pygame.Color(255, 0, 0),
+    18: pygame.Color(124, 254, 3),
+    19: pygame.Color(0, 252, 10),
+    20: pygame.Color(254, 85, 1),
+    21: pygame.Color(0, 251, 92),
+}
+WAVES_PALETTE = {
+    PATH_MARK: GRAY,
+    WALL_MARK: BLACK,
     0: pygame.Color(255, 0, 0),
     1: pygame.Color(255, 23, 0),
     2: pygame.Color(255, 46, 0),
