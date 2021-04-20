@@ -28,6 +28,7 @@ class DaliPathPainter(PicassoEngine):
         self.wave = None
         self.data_files = None
         self.route_rq = (None, None)
+        self.live_routing = False
 
     def post_init(self):
         self.data_files = {
@@ -53,11 +54,25 @@ class DaliPathPainter(PicassoEngine):
 
         if event.button == 1:
             self.route_rq = (pos, self.route_rq[1])
-            # self.find_a_route()
-            self.paint_wave_route(pos)
+            self.find_a_route()
         elif event.button == 3:
             self.route_rq = (self.route_rq[0], pos)
             self.wave = propagate_wave(self.maze, pos)
+
+    def on_mouse_motion(self, event):
+        if not self.live_routing:
+            return
+
+        x, y = event.pos
+        col = (x - LEFT_OFFSET - PADDING // 2) // PADDED_CELL
+        row = (y - TOP_OFFSET - PADDING // 2) // PADDED_CELL
+        pos = Position(row, col)
+
+        if not is_inside(pos, self.maze):
+            return
+
+        self.paint_maze()
+        self.paint_wave_route(pos)
 
     def on_key(self, event):
         if event.key == pygame.K_ESCAPE:
@@ -65,15 +80,18 @@ class DaliPathPainter(PicassoEngine):
             pygame.event.post(bye)
         elif event.key in self.data_files:
             self.maze = load_csv(self.data_files[event.key])
+            self.wave = None
             self.route_rq = (None, None)
+            self.live_routing = False
             self.paint_maze()
         elif event.key == pygame.K_F1:
             if self.data_files:
-                print(" F1 >> all available data sets")
+                print(" >> all available data sets")
                 for k, name in self.data_files.items():
                     print(f"\t'{chr(k)}' -> {name}")
         elif event.key == pygame.K_F2:
-            self.paint_wave()
+            # self.paint_wave()
+            self.live_routing = not self.live_routing
         elif event.key == pygame.K_KP_PLUS:
             self.step_grow()
 
@@ -130,7 +148,7 @@ class DaliPathPainter(PicassoEngine):
             print("warning: cannot start from wall", start)
             return
 
-        print("showing route from", start)
+        # print("showing route from", start)
         # self.screen.fill(BLACK)
 
         pos = start

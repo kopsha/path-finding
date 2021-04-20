@@ -138,10 +138,10 @@ def free_neighbours(maze, node, visited):
     neighbours = [
         pos
         for pos in [
-            Position(r - 1, c),
-            Position(r, c - 1),
-            Position(r + 1, c),
-            Position(r, c + 1),
+            Position(node.row - 1, node.col),
+            Position(node.row, node.col - 1),
+            Position(node.row + 1, node.col),
+            Position(node.row, node.col + 1),
         ]
         if is_inside(pos, maze) and pos not in visited and maze.item(pos) == 0
     ]

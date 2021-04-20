@@ -43,6 +43,8 @@ class PicassoEngine(metaclass=abc.ABCMeta):
                     keep_playing = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     self.on_click(event)
+                elif event.type == pygame.MOUSEMOTION:
+                    self.on_mouse_motion(event)
                 elif event.type == pygame.KEYDOWN:
                     self.on_key(event)
 
@@ -53,6 +55,10 @@ class PicassoEngine(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def on_click(self, event):
+        pass
+
+    @abc.abstractmethod
+    def on_mouse_motion(self, event):
         pass
 
     @abc.abstractmethod
