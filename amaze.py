@@ -2,11 +2,20 @@
 
 from pathfinding import WALL_MARK
 
+from collections import namedtuple
 import numpy
 import csv
 
 
-def load_csv(filename):
+Position = namedtuple("Position", ["row", "col"])
+
+
+def is_inside(position, maze):
+    rows, cols = maze.shape
+    return 0 <= position.row < rows and 0 <= position.col < cols
+
+
+def load_maze(filename):
     data = []
     with open(filename, newline="") as csvfile:
         content = csv.reader(csvfile, delimiter=",")
@@ -23,3 +32,12 @@ def load_csv(filename):
     print(f" >> loaded {filename}", matrix.shape)
 
     return matrix
+
+
+def save_maze(maze, filename):
+    with open(filename, "wt", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        for row in maze:
+            writer.writerow(row)
+
+    print(f" >> wrote {filename}", maze.shape)

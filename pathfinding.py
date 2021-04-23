@@ -1,5 +1,7 @@
+from amaze import Position, is_inside
+
 from heapq import heappop, heappush
-from collections import deque, namedtuple
+from collections import deque
 
 import math
 import numpy
@@ -7,14 +9,6 @@ import numpy
 
 WALL_MARK = -1
 PATH_MARK = -2
-
-
-Position = namedtuple("Position", ["row", "col"])
-
-
-def is_inside(position, maze):
-    rows, cols = maze.shape
-    return 0 <= position.row < rows and 0 <= position.col < cols
 
 
 def box_neighbour_values(maze, node):
@@ -169,3 +163,8 @@ def propagate_wave(maze, position):
                 seen.add(nb)
 
     return wave
+
+
+def get_me_some(maze):
+    outcome = numpy.array(maze)
+    return outcome

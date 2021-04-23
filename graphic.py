@@ -1,6 +1,6 @@
-from amaze import load_csv
+from amaze import load_maze, save_maze, Position, is_inside
 from picasso import PicassoEngine
-from pathfinding import find_a_star, propagate_wave, is_inside, Position
+from pathfinding import find_a_star, propagate_wave, get_me_some
 from pathfinding import PATH_MARK
 from palettes import WAVES_PALETTE, PINOUT_PALETTE, BLACK, WHITE
 
@@ -27,13 +27,14 @@ class DaliPathPainter(PicassoEngine):
         self.data_files = None
         self.route_rq = (None, None)
         self.live_routing = False
+        self.out_count = 0
 
     def post_init(self):
         self.data_files = {
             i + 49: name for i, name in enumerate(sorted(glob.glob("*.csv")))
         }
         if self.data_files:
-            self.maze = load_csv(self.data_files[49])
+            self.maze = load_maze(self.data_files[49])  # how about this one
             self.paint_maze()
 
     def on_paint(self):
@@ -77,7 +78,7 @@ class DaliPathPainter(PicassoEngine):
             bye = pygame.event.Event(pygame.QUIT)
             pygame.event.post(bye)
         elif event.key in self.data_files:
-            self.maze = load_csv(self.data_files[event.key])
+            self.maze = load_maze(self.data_files[event.key])
             self.wave = None
             self.route_rq = (None, None)
             self.live_routing = False
@@ -197,6 +198,19 @@ class DaliPathPainter(PicassoEngine):
             self.paint_maze()
         else:
             print("waning: no path found.")
+
+    def paint_a_maze(self, a_maze):
+        self.paint_bounding_box()
+        for pos, value in numpy.ndenumerate(a_maze):
+            self.paint_cell(pos, PINOUT_PALETTE[value])
+
+    def do_hard_work(self):
+        outcome = get_me_some(self.maze)
+        self.paint_a_maze(outcome)
+
+        self.out_count += 1
+        rows, cols = outcome.shape
+        save_maze(outcome, f"./data/work_{self.out_count:03}_{rows}x{cols}.csv")
 
 
 def main():
