@@ -1,5 +1,5 @@
 from heapq import heappop, heappush
-from collections import deque, defaultdict, Counter, namedtuple
+from collections import deque, namedtuple
 
 import math
 import numpy
@@ -17,38 +17,7 @@ def is_inside(position, maze):
     return 0 <= position.row < rows and 0 <= position.col < cols
 
 
-def distance(left, right):
-    """uniform grid distance heuristic"""
-    left_row, left_col = left
-    right_row, right_col = right
-
-    # return math.sqrt((right_row - left_row) ** 2 + (right_col - left_col) ** 2)
-    dist = max(abs(right_row - left_row), abs(right_col - left_col))
-    # dist = (abs(right_row - left_row) + abs(right_col - left_col))
-
-    return 2 * dist
-
-
-def cross_coords_x(maze, node, goal, visited):
-    goal_value = maze[goal]
-
-    neighbours = [
-        (distance(left=pos, right=goal), pos)
-        for pos in [
-            Position(node.row - 1, node.col),
-            Position(node.row, node.col - 1),
-            Position(node.row + 1, node.col),
-            Position(node.row, node.col + 1),
-        ]
-        if is_inside(pos, maze)
-        and pos not in visited
-        and maze.item(pos) in {0, goal_value}
-    ]
-
-    return neighbours
-
-
-def boxed_values(maze, node):
+def box_neighbour_values(maze, node):
     rows, cols = maze.shape
     nb = [
         maze.item(pos)
@@ -69,6 +38,49 @@ def boxed_values(maze, node):
     return nb
 
 
+def mask_unreachable(maze, allow_value):
+    masked = numpy.array(maze)
+    for node, value in numpy.ndenumerate(maze):
+        pos = Position(*node)
+        if value == 0:
+            nbs = set(box_neighbour_values(maze, pos))
+            other = nbs - {0, allow_value}
+            if other:
+                masked.itemset(pos, WALL_MARK)
+    return masked
+
+
+def distance(left, right):
+    """uniform grid distance heuristic"""
+    left_row, left_col = left
+    right_row, right_col = right
+
+    # return math.sqrt((right_row - left_row) ** 2 + (right_col - left_col) ** 2)
+    dist = max(abs(right_row - left_row), abs(right_col - left_col))
+    # dist = (abs(right_row - left_row) + abs(right_col - left_col))
+
+    return 2 * dist
+
+
+def cross_neighbours_x(maze, node, goal, visited):
+    goal_value = maze[goal]
+
+    neighbours = [
+        (distance(left=pos, right=goal), pos)
+        for pos in [
+            Position(node.row - 1, node.col),
+            Position(node.row, node.col - 1),
+            Position(node.row + 1, node.col),
+            Position(node.row, node.col + 1),
+        ]
+        if is_inside(pos, maze)
+        and pos not in visited
+        and maze.item(pos) in {0, goal_value}
+    ]
+
+    return neighbours
+
+
 def reconstruct_path(trail, position):
     path = deque([position])
     while position in trail:
@@ -76,18 +88,6 @@ def reconstruct_path(trail, position):
         path.appendleft(position)
 
     return list(path)
-
-
-def mask_unreachable(maze, allow_value):
-    masked = numpy.array(maze)
-    for node, value in numpy.ndenumerate(maze):
-        pos = Position(*node)
-        if value == 0:
-            nbs = set(boxed_values(maze, pos))
-            other = nbs - {0, allow_value}
-            if other:
-                masked.itemset(pos, WALL_MARK)
-    return masked
 
 
 def find_a_star(original_maze, start, finish):
@@ -113,7 +113,7 @@ def find_a_star(original_maze, start, finish):
         if pos == finish:
             return reconstruct_path(trail, pos)
 
-        for h_dist, neighbour in cross_coords_x(maze, pos, finish, visited):
+        for h_dist, neighbour in cross_neighbours_x(maze, pos, finish, visited):
             # tentative_gScore is the distance from start to the neighbour through pos
             came_from = trail.get(pos)
             if came_from is None:
@@ -121,7 +121,9 @@ def find_a_star(original_maze, start, finish):
 
             d_from = pos[0] - came_from[0], pos[1] - came_from[1]
             d_to = neighbour[0] - pos[0], neighbour[1] - pos[1]
-            new_g_score = pos_g_score + (1 if d_from == d_to else 2)
+            direction_change_penalty = 1 if d_from == d_to else 3
+            new_g_score = pos_g_score + direction_change_penalty
+            # must add conflict penalty
 
             if new_g_score < g_score.get(neighbour, math.inf):
                 # This path to neighbour is better than any previous one. Record it!

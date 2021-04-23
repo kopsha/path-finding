@@ -1,7 +1,6 @@
 from copy import deepcopy
 from datetime import datetime
 from collections import defaultdict, deque
-from pprint import pprint
 
 import csv
 import timeit
@@ -36,7 +35,7 @@ def load_csv_matrix(filename):
     assert cols > 1
 
     m = numpy.matrix(data, dtype=int)
-    print(f" >> shape", m.shape)
+    print(" >> shape", m.shape)
 
     return m
 

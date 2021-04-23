@@ -12,7 +12,7 @@ class PicassoEngine(metaclass=abc.ABCMeta):
 
     def __enter__(self):
         print(" >> engine started")
-        if not self.screen is None:
+        if self.screen is not None:
             raise RuntimeError("Video screen is already initialized.")
 
         pygame.init()

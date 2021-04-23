@@ -1,15 +1,13 @@
+from amaze import load_csv
 from picasso import PicassoEngine
 from pathfinding import find_a_star, propagate_wave, is_inside, Position
-from pathfinding import WALL_MARK, PATH_MARK
-from palettes import WAVES_PALETTE, PINOUT_PALETTE, BLACK, GRAY, WHITE
+from pathfinding import PATH_MARK
+from palettes import WAVES_PALETTE, PINOUT_PALETTE, BLACK, WHITE
 
 import pygame
 import numpy
-import csv
 import glob
 import heapq
-
-from collections import Counter, defaultdict
 
 
 WINDOW_SIZE = 1024, 768
@@ -92,6 +90,8 @@ class DaliPathPainter(PicassoEngine):
         elif event.key == pygame.K_F2:
             # self.paint_wave()
             self.live_routing = not self.live_routing
+        elif event.key == pygame.K_F5:
+            self.do_hard_work()
         elif event.key == pygame.K_KP_PLUS:
             self.step_grow()
 
@@ -156,7 +156,6 @@ class DaliPathPainter(PicassoEngine):
 
         while pos != finish:
             # paint current cell
-            col = pygame.Color(0, 255, 0)
             self.paint_cell(pos, WAVES_PALETTE[PATH_MARK])
 
             # pick the next cell
@@ -198,25 +197,6 @@ class DaliPathPainter(PicassoEngine):
             self.paint_maze()
         else:
             print("waning: no path found.")
-
-
-def load_csv(filename):
-    data = []
-    with open(filename, newline="") as csvfile:
-        content = csv.reader(csvfile, delimiter=",")
-        for row in content:
-            row_data = list(map(lambda x: WALL_MARK if x == "Z" else int(x), row))
-            data.append(row_data)
-
-    rows = len(data)
-    assert rows > 1
-    cols = len(data[0])
-    assert cols > 1
-
-    matrix = numpy.array(data, dtype=int)
-    print(f" >> loaded {filename}", matrix.shape)
-
-    return matrix
 
 
 def main():
