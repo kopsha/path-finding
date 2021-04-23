@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 
-from pathfinding import WALL_MARK
-
 from collections import namedtuple
 import numpy
 import csv
+
+
+WALL_MARK = -1
+PATH_MARK = -2
 
 
 Position = namedtuple("Position", ["row", "col"])

@@ -1,7 +1,6 @@
-from amaze import load_maze, save_maze, Position, is_inside
+from amaze import load_maze, save_maze, Position, is_inside, PATH_MARK
 from picasso import PicassoEngine
 from pathfinding import find_a_star, propagate_wave, get_me_some
-from pathfinding import PATH_MARK
 from palettes import WAVES_PALETTE, PINOUT_PALETTE, BLACK, WHITE
 
 import pygame
@@ -210,7 +209,7 @@ class DaliPathPainter(PicassoEngine):
 
         self.out_count += 1
         rows, cols = outcome.shape
-        save_maze(outcome, f"./data/work_{self.out_count:03}_{rows}x{cols}.csv")
+        # save_maze(outcome, f"./data/work_{self.out_count:03}_{rows}x{cols}.csv")
 
 
 def main():

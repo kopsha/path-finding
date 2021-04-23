@@ -1,6 +1,6 @@
 import pygame
 
-from pathfinding import WALL_MARK, PATH_MARK
+from amaze import WALL_MARK, PATH_MARK
 
 
 BLACK = pygame.Color(0, 0, 0)
