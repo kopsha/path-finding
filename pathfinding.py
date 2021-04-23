@@ -206,14 +206,22 @@ def get_me_some(original_maze):
         if value > 0:
             pins[value].append(Position(*pos))
 
+    real_estate = defaultdict(list)
+
     for i in pins:
         pairs = pair_by_distance(pins[i])
         # find a path between each pair
         for left, right in pairs:
             path = find_a_star(maze, left, right)
 
-            if path:
-                for node in path:
-                    outcome.itemset(node, i)
+            for node in path:
+                outcome.itemset(node, i)
+                real_estate[node].append(i)
+
+
+    print("bidders conflict")
+    for node, bidders in real_estate.items():
+        if len(bidders) > 1:
+            print(node, "<<", bidders)
 
     return outcome
