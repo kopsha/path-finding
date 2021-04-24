@@ -1,4 +1,4 @@
-from amaze import Position, is_inside, WALL_MARK, PATH_MARK
+from amaze import Position, is_inside, WALL_MARK
 
 from heapq import heappop, heappush
 from collections import deque, defaultdict
@@ -105,15 +105,16 @@ def find_a_star(original_maze, start, finish):
             return reconstruct_path(trail, pos)
 
         for h_dist, neighbour in cross_neighbours_x(maze, pos, finish, visited):
-            # tentative_gScore is the distance_heuristic from start to the neighbour through pos
+            # tentative_gScore is the distance_heuristic from start to the
+            # neighbour through pos
             came_from = trail.get(pos)
             if came_from is None:
                 came_from = pos
 
             d_from = pos[0] - came_from[0], pos[1] - came_from[1]
             d_to = neighbour[0] - pos[0], neighbour[1] - pos[1]
-            direction_change_penalty = 1 if d_from == d_to else 3
-            new_g_score = pos_g_score + direction_change_penalty
+            corner_penalty = 1 if d_from == d_to else 3
+            new_g_score = pos_g_score + corner_penalty
             # must add conflict penalty
 
             if new_g_score < g_score.get(neighbour, math.inf):
@@ -196,30 +197,95 @@ def pair_by_distance(nodes):
     return pairs
 
 
-def get_me_some(original_maze):
-    maze = numpy.array(original_maze)
-    outcome = numpy.array(original_maze)
-
-    # scan pins
+def scan_pins(maze):
     pins = defaultdict(list)
     for pos, value in numpy.ndenumerate(maze):
         if value > 0:
             pins[value].append(Position(*pos))
+    return dict(pins)
+
+
+def new_neighbours(maze, seen, node, target):
+    pin_value = maze[target]
+
+    neighbours = [
+        (pos, m_distance(left=pos, right=target))
+        for pos in [
+            Position(node.row - 1, node.col),
+            Position(node.row, node.col - 1),
+            Position(node.row + 1, node.col),
+            Position(node.row, node.col + 1),
+        ]
+        if is_inside(pos, maze)
+        and pos not in seen
+        and maze.item(pos) in {0, pin_value}
+    ]
+
+    return neighbours
+
+
+def find_a_path(original_maze, penalties, start, finish):
+
+    pin_value = original_maze.item(finish)
+    maze = mask_unreachable(original_maze, pin_value)
+
+    actual_cost = {start: 0}
+    predicted_cost = {
+        start: penalties.item(start) + m_distance(start, finish)
+    }
+
+    trail = dict()
+    visited = set()
+    queue = [(predicted_cost[start], start)]
+    queue_set = set([start])
+
+    while queue:
+        predicted, node = heappop(queue)
+        queue_set.remove(node)
+        actual = actual_cost[node]
+        visited.add(node)
+
+        if node == finish or maze.item(node) == pin_value:
+            return reconstruct_path(trail, node)
+
+        came_from = trail.get(node, node)
+        d_from = node.row - came_from.row, node.col - came_from.col
+
+        for neighbour, m_dist in new_neighbours(maze, visited, node, finish):
+            d_to = neighbour.row - node.row, neighbour.col - node.row
+            corner_penalty = 0 if d_from == d_to else 2
+            new_actual = actual + 1
+
+            if new_actual < actual_cost.get(neighbour, math.inf):
+                # This path to neighbour is better than any previous one. Record it!
+                trail[neighbour] = node
+                actual_cost[neighbour] = new_actual
+                new_predicted = new_actual + m_dist + corner_penalty + penalties[neighbour]
+                predicted_cost[neighbour] = new_predicted
+                if neighbour not in queue_set:
+                    heappush(queue, (new_predicted, neighbour))
+                    queue_set.add(node)
+
+    return []
+
+
+def get_me_some(original_maze):
+    maze = numpy.array(original_maze)
+    outcome = numpy.array(original_maze)
+
+    pins = scan_pins(maze)
+    costs = numpy.zeros_like(maze)
 
     real_estate = defaultdict(list)
-
     for i in pins:
         pairs = pair_by_distance(pins[i])
         # find a path between each pair
         for left, right in pairs:
-            path = find_a_star(maze, left, right)
-
-            for node in path:
+            for node in find_a_star(maze, left, right):
                 outcome.itemset(node, i)
                 real_estate[node].append(i)
 
-
-    print("bidders conflict")
+    print("conflicting zones")
     for node, bidders in real_estate.items():
         if len(bidders) > 1:
             print(node, "<<", bidders)
